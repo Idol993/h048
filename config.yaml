@@ -1,0 +1,60 @@
+log_formats:
+  plain:
+    - name: standard
+      pattern: '^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+\[(?P<level>[A-Z]+)\]\s+(?P<service>[\w\-]+)?\s*:?\s*(?P<message>.*)$'
+      timestamp_format: "%Y-%m-%d %H:%M:%S"
+    - name: extended
+      pattern: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+\-]\d{2}:\d{2})?)\s+(?P<level>[A-Z]+)\s+(?P<message>.*)$'
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+    - name: nginx_style
+      pattern: '^\[(?P<timestamp>[^\]]+)\]\s+(?P<level>[A-Z]+):\s+(?P<message>.*)$'
+      timestamp_format: "%Y-%m-%d %H:%M:%S"
+  json:
+    level_fields: ["level", "severity", "log_level", "loglevel"]
+    message_fields: ["message", "msg", "log_message", "content", "text"]
+    timestamp_fields: ["timestamp", "time", "@timestamp", "datetime", "date"]
+    service_fields: ["service", "service_name", "app", "application", "logger"]
+  logfmt:
+    pattern: '([\w\-]+)=("[^"]*"|\S+)'
+    level_keys: ["level", "severity"]
+    message_keys: ["msg", "message"]
+    timestamp_keys: ["ts", "time", "timestamp"]
+
+anomaly_detection:
+  algorithm: isolation_forest
+  contamination: 0.1
+  default_threshold: -0.5
+  n_estimators: 100
+  max_samples: auto
+  random_state: 42
+
+clustering:
+  algorithm: dbscan
+  eps: 0.5
+  min_samples: 3
+  metric: cosine
+
+feature_extraction:
+  tfidf_max_features: 5000
+  tfidf_ngram_range: [1, 2]
+  tfidf_min_df: 2
+  tfidf_max_df: 0.95
+  stop_words: english
+
+time_window:
+  default_window_minutes: 5
+  burst_threshold_std: 2.0
+
+output:
+  terminal:
+    max_keywords: 10
+    max_clusters: 10
+    max_examples: 5
+  json:
+    include_examples: true
+    include_features: false
+    pretty: true
+
+streaming:
+  chunksize: 10000
+  n_jobs: -1

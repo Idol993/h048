@@ -1,0 +1,609 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-20T14:32:47.642747",
+    "total_entries": 150,
+    "anomaly_count": 16,
+    "anomaly_rate": 0.106667,
+    "threshold": 0.0,
+    "algorithm": "isolation_forest"
+  },
+  "summary": {
+    "clusters_count": 4,
+    "noise_count": 4,
+    "overall_severity_score": 0.2478,
+    "summary_text": "Detected 16 anomalies (10.67%) in 150 lines. Found 4 clusters (noise=4). Top issues: Cluster#0(n=6, sev=0.34)[refused, connection, Connection]; Cluster#2(n=2, sev=0.34)[failed, Payment, Gateway]; Cluster#1(n=2, sev=0.33)[refused, connection, failed].",
+    "global_keywords": [
+      {
+        "keyword": "refused",
+        "score": 4.9677,
+        "frequency": 10
+      },
+      {
+        "keyword": "connection",
+        "score": 4.9677,
+        "frequency": 10
+      },
+      {
+        "keyword": "Connection",
+        "score": 3.2,
+        "frequency": 8
+      },
+      {
+        "keyword": "failed",
+        "score": 2.9845,
+        "frequency": 6
+      },
+      {
+        "keyword": "Payment",
+        "score": 1.6,
+        "frequency": 4
+      },
+      {
+        "keyword": "FAILED",
+        "score": 1.6,
+        "frequency": 4
+      },
+      {
+        "keyword": "Charge",
+        "score": 1.2,
+        "frequency": 3
+      },
+      {
+        "keyword": "payment",
+        "score": 1.1332,
+        "frequency": 12
+      },
+      {
+        "keyword": "connection refused",
+        "score": 0.9677,
+        "frequency": 8
+      },
+      {
+        "keyword": "gateway",
+        "score": 0.9552,
+        "frequency": 8
+      },
+      {
+        "keyword": "com",
+        "score": 0.929,
+        "frequency": 7
+      },
+      {
+        "keyword": "refused payment",
+        "score": 0.9197,
+        "frequency": 0
+      },
+      {
+        "keyword": "example",
+        "score": 0.9197,
+        "frequency": 6
+      },
+      {
+        "keyword": "example com",
+        "score": 0.9197,
+        "frequency": 0
+      },
+      {
+        "keyword": "gateway example",
+        "score": 0.9197,
+        "frequency": 0
+      }
+    ],
+    "top_services": [
+      {
+        "service": "payment-service",
+        "count": 11
+      },
+      {
+        "service": "order-service",
+        "count": 2
+      },
+      {
+        "service": "checkout",
+        "count": 2
+      },
+      {
+        "service": "auth-service",
+        "count": 1
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "size": 6,
+      "severity_score": 0.336,
+      "mean_score": 0.0,
+      "min_score": 0.0,
+      "max_score": 0.0,
+      "keywords": [
+        {
+          "keyword": "refused",
+          "score": 3.2731,
+          "frequency": 6
+        },
+        {
+          "keyword": "connection",
+          "score": 2.4,
+          "frequency": 6
+        },
+        {
+          "keyword": "Connection",
+          "score": 2.4,
+          "frequency": 6
+        },
+        {
+          "keyword": "retry count",
+          "score": 0.8731,
+          "frequency": 6
+        },
+        {
+          "keyword": "retry",
+          "score": 0.8731,
+          "frequency": 6
+        },
+        {
+          "keyword": "refused payment",
+          "score": 0.8731,
+          "frequency": 0
+        },
+        {
+          "keyword": "payment gateway",
+          "score": 0.8731,
+          "frequency": 0
+        },
+        {
+          "keyword": "payment",
+          "score": 0.8731,
+          "frequency": 6
+        },
+        {
+          "keyword": "gateway example",
+          "score": 0.8731,
+          "frequency": 0
+        },
+        {
+          "keyword": "gateway",
+          "score": 0.8731,
+          "frequency": 6
+        }
+      ],
+      "time_distribution": [
+        {
+          "bucket": "2024-01-15 10:02",
+          "count": 6,
+          "anomaly_count": 6
+        }
+      ],
+      "services": {
+        "payment-service": 6
+      },
+      "levels": {
+        "ERROR": 6
+      },
+      "representative_messages": [
+        "Connection refused to payment-gateway.example.com:443, retry count=1",
+        "Connection refused to payment-gateway.example.com:443, retry count=2",
+        "Connection refused to payment-gateway.example.com:443, retry count=3",
+        "Connection refused to payment-gateway.example.com:443, retry count=1",
+        "Connection refused to payment-gateway.example.com:443, retry count=2"
+      ],
+      "example_indices": [
+        0,
+        1,
+        2,
+        5,
+        6
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "size": 2,
+      "severity_score": 0.336,
+      "mean_score": -0.0584,
+      "min_score": -0.0601,
+      "max_score": -0.0567,
+      "keywords": [
+        {
+          "keyword": "failed",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Payment",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Gateway",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "payment",
+          "score": 0.4542,
+          "frequency": 2
+        },
+        {
+          "keyword": "upstream",
+          "score": 0.2271,
+          "frequency": 2
+        },
+        {
+          "keyword": "service returned",
+          "score": 0.2271,
+          "frequency": 2
+        },
+        {
+          "keyword": "service",
+          "score": 0.2271,
+          "frequency": 2
+        },
+        {
+          "keyword": "returned 502",
+          "score": 0.2271,
+          "frequency": 2
+        },
+        {
+          "keyword": "returned",
+          "score": 0.2271,
+          "frequency": 2
+        },
+        {
+          "keyword": "processing failed",
+          "score": 0.2271,
+          "frequency": 2
+        }
+      ],
+      "time_distribution": [
+        {
+          "bucket": "2024-01-15 10:02",
+          "count": 2,
+          "anomaly_count": 2
+        }
+      ],
+      "services": {
+        "order-service": 2
+      },
+      "levels": {
+        "ERROR": 2
+      },
+      "representative_messages": [
+        "Payment processing failed for order #9883: upstream payment service returned 502 Bad Gateway",
+        "Payment processing failed for order #9884: upstream payment service returned 502 Bad Gateway"
+      ],
+      "example_indices": [
+        4,
+        9
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "size": 2,
+      "severity_score": 0.3251,
+      "mean_score": -0.0284,
+      "min_score": -0.0327,
+      "max_score": -0.0241,
+      "keywords": [
+        {
+          "keyword": "refused",
+          "score": 1.8453,
+          "frequency": 4
+        },
+        {
+          "keyword": "connection",
+          "score": 1.6,
+          "frequency": 4
+        },
+        {
+          "keyword": "failed",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "error",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Failed",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "ConnectionRefusedError",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Errno",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Connection",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "retries connectionrefusederror",
+          "score": 0.2453,
+          "frequency": 0
+        },
+        {
+          "keyword": "retries",
+          "score": 0.2453,
+          "frequency": 2
+        }
+      ],
+      "time_distribution": [
+        {
+          "bucket": "2024-01-15 10:02",
+          "count": 2,
+          "anomaly_count": 2
+        }
+      ],
+      "services": {
+        "payment-service": 2
+      },
+      "levels": {
+        "FATAL": 2
+      },
+      "representative_messages": [
+        "Failed to process payment for order #9883 after 3 retries: ConnectionRefusedError: [Errno 111] Connection refused",
+        "Failed to process payment for order #9884 after 3 retries: ConnectionRefusedError: [Errno 111] Connection refused"
+      ],
+      "example_indices": [
+        3,
+        8
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "size": 2,
+      "severity_score": 0.313,
+      "mean_score": -0.0026,
+      "min_score": -0.0026,
+      "max_score": -0.0026,
+      "keywords": [
+        {
+          "keyword": "FAILED",
+          "score": 1.6,
+          "frequency": 4
+        },
+        {
+          "keyword": "failed",
+          "score": 1.0688,
+          "frequency": 2
+        },
+        {
+          "keyword": "Checkout",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Payment",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Stripe",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Many",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "Requests",
+          "score": 0.8,
+          "frequency": 2
+        },
+        {
+          "keyword": "stripe 429",
+          "score": 0.2688,
+          "frequency": 0
+        },
+        {
+          "keyword": "stripe",
+          "score": 0.2688,
+          "frequency": 2
+        },
+        {
+          "keyword": "requests",
+          "score": 0.2688,
+          "frequency": 2
+        }
+      ],
+      "time_distribution": [
+        {
+          "bucket": "2024-01-15 10:06",
+          "count": 2,
+          "anomaly_count": 2
+        }
+      ],
+      "services": {
+        "checkout": 2
+      },
+      "levels": {
+        "ERROR": 2
+      },
+      "representative_messages": [
+        "Checkout FAILED for order_id=9903. Payment provider Stripe: 429 Too Many Requests",
+        "Checkout FAILED for order_id=9904. Payment provider Stripe: 429 Too Many Requests"
+      ],
+      "example_indices": [
+        14,
+        15
+      ]
+    }
+  ],
+  "burst_windows": [
+    {
+      "window_start": "2024-01-15T10:00:00",
+      "window_end": "2024-01-15T10:05:00",
+      "anomaly_count": 11,
+      "total_count": 83,
+      "anomaly_rate": 0.13253,
+      "is_burst": false,
+      "z_score": 1.0
+    },
+    {
+      "window_start": "2024-01-15T10:05:00",
+      "window_end": "2024-01-15T10:10:00",
+      "anomaly_count": 5,
+      "total_count": 67,
+      "anomaly_rate": 0.074627,
+      "is_burst": false,
+      "z_score": -1.0
+    }
+  ],
+  "anomaly_samples": [
+    {
+      "timestamp": "2024-01-15T10:02:05",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=1",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 26
+    },
+    {
+      "timestamp": "2024-01-15T10:02:06",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=2",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 27
+    },
+    {
+      "timestamp": "2024-01-15T10:02:07",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=3",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 28
+    },
+    {
+      "timestamp": "2024-01-15T10:02:08",
+      "level": "FATAL",
+      "message": "Failed to process payment for order #9883 after 3 retries: ConnectionRefusedError: [Errno 111] Connection refused",
+      "service": "payment-service",
+      "score": -0.024119,
+      "source_file": "test_app_plain.log",
+      "line_number": 29
+    },
+    {
+      "timestamp": "2024-01-15T10:02:09",
+      "level": "ERROR",
+      "message": "Payment processing failed for order #9883: upstream payment service returned 502 Bad Gateway",
+      "service": "order-service",
+      "score": -0.056663,
+      "source_file": "test_app_plain.log",
+      "line_number": 30
+    },
+    {
+      "timestamp": "2024-01-15T10:02:14",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=1",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 35
+    },
+    {
+      "timestamp": "2024-01-15T10:02:15",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=2",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 36
+    },
+    {
+      "timestamp": "2024-01-15T10:02:16",
+      "level": "ERROR",
+      "message": "Connection refused to payment-gateway.example.com:443, retry count=3",
+      "service": "payment-service",
+      "score": 0.0,
+      "source_file": "test_app_plain.log",
+      "line_number": 37
+    },
+    {
+      "timestamp": "2024-01-15T10:02:17",
+      "level": "FATAL",
+      "message": "Failed to process payment for order #9884 after 3 retries: ConnectionRefusedError: [Errno 111] Connection refused",
+      "service": "payment-service",
+      "score": -0.032675,
+      "source_file": "test_app_plain.log",
+      "line_number": 38
+    },
+    {
+      "timestamp": "2024-01-15T10:02:18",
+      "level": "ERROR",
+      "message": "Payment processing failed for order #9884: upstream payment service returned 502 Bad Gateway",
+      "service": "order-service",
+      "score": -0.060123,
+      "source_file": "test_app_plain.log",
+      "line_number": 39
+    },
+    {
+      "timestamp": "2024-01-15T10:02:45",
+      "level": "ERROR",
+      "message": "NullPointerException during token validation at com.auth.TokenValidator.validate(TokenValidator.java:45)",
+      "service": "auth-service",
+      "score": -0.007887,
+      "source_file": "test_app_plain.log",
+      "line_number": 46
+    },
+    {
+      "timestamp": "2024-01-15T10:05:00.250000",
+      "level": "INFO",
+      "message": "Charge captured successfully, order_id=9895, amount_cents=7999",
+      "service": "payment-service",
+      "score": -0.003001,
+      "source_file": "test_app_json.log",
+      "line_number": 6
+    },
+    {
+      "timestamp": "2024-01-15T10:05:00.500000",
+      "level": "INFO",
+      "message": "Charge captured successfully, order_id=9896, amount_cents=19950",
+      "service": "payment-service",
+      "score": -0.008728,
+      "source_file": "test_app_json.log",
+      "line_number": 11
+    },
+    {
+      "timestamp": "2024-01-15T10:05:03",
+      "level": "INFO",
+      "message": "Charge captured successfully, order_id=9899, amount_cents=12000",
+      "service": "payment-service",
+      "score": -0.003481,
+      "source_file": "test_app_json.log",
+      "line_number": 31
+    },
+    {
+      "timestamp": "2024-01-15T10:06:01.550000",
+      "level": "ERROR",
+      "message": "Checkout FAILED for order_id=9903. Payment provider Stripe: 429 Too Many Requests",
+      "service": "checkout",
+      "score": -0.002582,
+      "source_file": "test_app_logfmt.log",
+      "line_number": 24
+    },
+    {
+      "timestamp": "2024-01-15T10:06:01.560000",
+      "level": "ERROR",
+      "message": "Checkout FAILED for order_id=9904. Payment provider Stripe: 429 Too Many Requests",
+      "service": "checkout",
+      "score": -0.002582,
+      "source_file": "test_app_logfmt.log",
+      "line_number": 25
+    }
+  ]
+}
