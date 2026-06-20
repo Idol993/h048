@@ -52,6 +52,7 @@ class Reporter:
                 "anomaly_count": detection_result.anomaly_count,
                 "anomaly_rate": round(detection_result.anomaly_rate, 6),
                 "threshold": detection_result.threshold,
+                "threshold_type": detection_result.threshold_type,
                 "algorithm": self.config.anomaly.algorithm,
             },
             "summary": {
@@ -67,7 +68,13 @@ class Reporter:
             },
             "clusters": [],
             "burst_windows": [],
+            "templates": [],
         }
+        if detection_result.model_info:
+            payload["metadata"]["model_info"] = detection_result.model_info
+            payload["metadata"]["analysis_mode"] = "baseline"
+        else:
+            payload["metadata"]["analysis_mode"] = "fit_on_data"
         for c in root_cause.clusters:
             cluster_payload = {
                 "cluster_id": c.cluster_id,
@@ -100,6 +107,17 @@ class Reporter:
                 "anomaly_rate": round(bw.anomaly_rate, 6),
                 "is_burst": bw.is_burst,
                 "z_score": round(bw.z_score, 4),
+            })
+        for t in root_cause.templates:
+            payload["templates"].append({
+                "template": t.template,
+                "count": t.count,
+                "services": t.services,
+                "levels": t.levels,
+                "mean_score": round(t.mean_score, 4),
+                "min_score": round(t.min_score, 4),
+                "severity_rank": round(t.severity_rank, 4),
+                "examples": t.example_messages[:5],
             })
         if self.config.output.json_include_examples:
             anomalies = [a for a in detection_result.anomaly_results if a.is_anomaly]
@@ -134,10 +152,23 @@ class Reporter:
         meta_table.add_row("Anomalies detected", f"[red]{dr.anomaly_count:,}[/red]")
         meta_table.add_row("Anomaly rate", f"[red]{dr.anomaly_rate:.2%}[/red]")
         meta_table.add_row("Threshold", f"{dr.threshold}")
+        th_type = dr.threshold_type
+        th_color = "bold yellow" if th_type == "manual" else "dim"
+        meta_table.add_row("Threshold type", f"[{th_color}]{th_type}[/{th_color}]")
+        if dr.model_info:
+            mi = dr.model_info
+            meta_table.add_row("Analysis mode", "[bold green]baseline[/bold green]")
+            meta_table.add_row("Model version", mi.get("model_version", "-"))
+            meta_table.add_row("Training entries", f"{mi.get('training_entries', 0):,}")
+            meta_table.add_row("Feature count", str(mi.get("feature_count", 0)))
+            meta_table.add_row("Model trained at", mi.get("created_at", "-")[:19] if mi.get("created_at") else "-")
+        else:
+            meta_table.add_row("Analysis mode", "[dim]fit_on_data[/dim]")
         meta_table.add_row("Clusters found", f"[yellow]{len(rc.clusters)}[/yellow]")
         meta_table.add_row("Noise entries", f"{rc.noise_count}")
         meta_table.add_row("Overall severity", f"[bold]{rc.overall_severity_score:.4f}[/bold]")
         meta_table.add_row("Burst windows", f"[orange1]{sum(1 for b in dr.burst_windows if b.is_burst)}[/orange1]")
+        meta_table.add_row("Log templates", f"[cyan]{len(rc.templates)}[/cyan]")
         self.console.print(meta_table)
 
         self.console.print()
@@ -271,6 +302,50 @@ class Reporter:
             content = Text.assemble(*panel_content_parts)
             self.console.print(Panel(content, title=f"Cluster #{c.cluster_id} — Details", border_style=sev_color))
 
+    def print_templates(self, root_cause: RootCauseResult, max_templates: int = 10) -> None:
+        from template import LogTemplate
+        templates: List[LogTemplate] = root_cause.templates
+        if not templates:
+            return
+        display = templates[:max_templates]
+        table = Table(
+            title=f"Anomaly Log Templates (Top {len(display)})",
+            box=box.ROUNDED,
+            header_style="bold magenta",
+        )
+        table.add_column("Rank", justify="right", style="dim")
+        table.add_column("Count", justify="right")
+        table.add_column("SevRank", justify="right")
+        table.add_column("Template", style="white", overflow="fold")
+        table.add_column("Services", style="yellow")
+        for i, t in enumerate(display, 1):
+            short_tpl = t.template[:150] + ("..." if len(t.template) > 150 else "")
+            svc_list = ", ".join(f"{s}({n})" for s, n in list(t.services.items())[:3])
+            sev_color = "red" if t.severity_rank >= 0.7 else "yellow" if t.severity_rank >= 0.4 else "white"
+            table.add_row(
+                str(i),
+                f"[cyan]{t.count}[/cyan]",
+                f"[{sev_color}]{t.severity_rank:.2f}[/{sev_color}]",
+                f"[dim]{short_tpl}[/dim]",
+                svc_list or "-",
+            )
+        self.console.print(table)
+
+        for i, t in enumerate(display[:5], 1):
+            self.console.print()
+            sev_color = "red" if t.severity_rank >= 0.7 else "yellow" if t.severity_rank >= 0.4 else "green"
+            panel_parts = [("Template: ", "bold"), (t.template, "white")]
+            if t.example_messages:
+                panel_parts.append(("\n\nExample:", "bold underline"))
+                ex = t.example_messages[0][:300]
+                panel_parts.append((f"\n  {ex}", "dim"))
+            content = Text.assemble(*panel_parts)
+            self.console.print(Panel(
+                content,
+                title=f"Template #{i} — count={t.count}, sev={t.severity_rank:.2f}",
+                border_style=sev_color,
+            ))
+
     def print_full_report(self, detection_result: DetectionResult, root_cause: RootCauseResult) -> None:
         self.print_summary(detection_result, root_cause)
         self.console.print()
@@ -281,5 +356,7 @@ class Reporter:
         self.print_burst_windows(detection_result)
         self.console.print()
         self.print_clusters(root_cause)
+        self.console.print()
+        self.print_templates(root_cause)
         self.console.print()
         self.console.print(Text("Tip: check the generated JSON file for complete raw data.", style="dim italic"))

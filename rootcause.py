@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from config import AppConfig
 from detector import AnomalyResult, DetectionResult
 from parser import LogEntry, LogParser
+from template import TemplateExtractor, LogTemplate
 
 
 @dataclass
@@ -52,6 +53,7 @@ class RootCauseResult:
     overall_severity_score: float = 0.0
     noise_count: int = 0
     summary: str = ""
+    templates: List[Any] = field(default_factory=list)
 
 
 ERROR_PATTERNS = [
@@ -307,6 +309,11 @@ class RootCauseExtractor:
             f"Found {len(cluster_infos)} clusters (noise={result.noise_count}). "
             f"Top issues: {summary_parts}."
         )
+
+        extractor = TemplateExtractor()
+        extractor.fit(detection_result.anomaly_results)
+        result.templates = extractor.templates
+
         return result
 
     def get_cluster_messages(self, root_cause: RootCauseResult, cluster_id: int) -> List[str]:

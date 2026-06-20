@@ -319,50 +319,69 @@ class LogParser:
 
     def create_vectorizer(self, fit_messages: Optional[List[str]] = None) -> TfidfVectorizer:
         cfg = self.config.feature
+        min_df = cfg.tfidf_min_df
+        if fit_messages:
+            valid_msgs = [m for m in fit_messages if m and m.strip()]
+            if len(valid_msgs) < min_df * 10:
+                min_df = max(1, min(len(valid_msgs), 2))
         self._vectorizer = TfidfVectorizer(
             max_features=cfg.tfidf_max_features,
             ngram_range=cfg.tfidf_ngram_range,
-            min_df=cfg.tfidf_min_df,
+            min_df=min_df,
             max_df=cfg.tfidf_max_df,
             stop_words=cfg.stop_words if cfg.stop_words != "none" else None,
         )
         if fit_messages:
             valid_msgs = [m for m in fit_messages if m and m.strip()]
-            if len(valid_msgs) >= cfg.tfidf_min_df:
-                self._vectorizer.fit(valid_msgs)
-                self._is_fitted_vectorizer = True
+            try:
+                if len(valid_msgs) >= min_df:
+                    self._vectorizer.fit(valid_msgs)
+                    self._is_fitted_vectorizer = True
+            except Exception:
+                if len(valid_msgs) >= 1:
+                    self._vectorizer.min_df = 1
+                    try:
+                        self._vectorizer.fit(valid_msgs)
+                        self._is_fitted_vectorizer = True
+                    except Exception:
+                        self._is_fitted_vectorizer = False
         return self._vectorizer
 
     def extract_numeric_features(self, entries: List[LogEntry]) -> np.ndarray:
         n = len(entries)
         if n == 0:
-            return np.array([])
-        features = np.zeros((n, 5), dtype=np.float32)
+            return np.array([]).reshape(0, 8)
+        features = np.zeros((n, 8), dtype=np.float32)
         ts_seconds: List[float] = []
         base_ts = None
         for e in entries:
             if e.timestamp is not None:
                 base_ts = e.timestamp
                 break
+        prev_ts = base_ts
         for i, e in enumerate(entries):
             features[i, 0] = float(e.level_value) / 60.0
             features[i, 1] = float(len(e.message)) / 500.0 if e.message else 0.0
             num_tokens = len(e.message.split()) if e.message else 0
             features[i, 2] = float(num_tokens) / 100.0
+            if e.timestamp is not None and prev_ts is not None:
+                ts_diff = (e.timestamp - prev_ts).total_seconds()
+                features[i, 5] = min(float(abs(ts_diff)) / 60.0, 1.0)
+                prev_ts = e.timestamp
             if e.timestamp is not None and base_ts is not None:
-                ts_diff = (e.timestamp - base_ts).total_seconds()
-                ts_seconds.append(ts_diff)
+                ts_elapsed = (e.timestamp - base_ts).total_seconds()
+                ts_seconds.append(ts_elapsed)
+                max_ts_day = 24 * 3600
+                features[i, 6] = min(float(ts_elapsed) / max_ts_day, 1.0)
             else:
                 ts_seconds.append(0.0)
             error_keywords = ["error", "fail", "exception", "traceback", "fatal", "critical", "panic"]
             msg_lower = e.message.lower() if e.message else ""
-            features[i, 3] = float(sum(1 for kw in error_keywords if kw in msg_lower))
-            has_stack = 1.0 if ("traceback" in msg_lower or "at " in msg_lower and ".java:" in msg_lower) else 0.0
+            features[i, 3] = float(sum(1 for kw in error_keywords if kw in msg_lower)) / len(error_keywords)
+            has_stack = 1.0 if ("traceback" in msg_lower or ("at " in msg_lower and ".java:" in msg_lower) or "File \"" in e.message) else 0.0
             features[i, 4] = has_stack
-        if ts_seconds:
-            max_ts = max(ts_seconds) or 1.0
-            for i in range(n):
-                pass
+            special_chars = sum(1 for c in e.message if c in "!@#$%^&*()[]{}<>?\\/") if e.message else 0
+            features[i, 7] = min(float(special_chars) / 20.0, 1.0)
         return features
 
     def extract_features(self, entries: List[LogEntry], vectorizer: Optional[TfidfVectorizer] = None) -> FeatureResult:

@@ -7,10 +7,41 @@ import pandas as pd
 from scipy.sparse import csr_matrix, vstack
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, dump as joblib_dump, load as joblib_load
 
 from config import AppConfig
 from parser import LogEntry, FeatureResult, LogParser
+
+MODEL_VERSION = "1.0.0"
+
+
+@dataclass
+class TrainedModel:
+    model: Any
+    vectorizer: Any
+    config: Dict[str, Any]
+    metadata: Dict[str, Any]
+
+    def save(self, path: str) -> None:
+        package = {
+            "model_version": MODEL_VERSION,
+            "created_at": datetime.now().isoformat(),
+            "model": self.model,
+            "vectorizer": self.vectorizer,
+            "config": self.config,
+            "metadata": self.metadata,
+        }
+        joblib_dump(package, path, compress=3)
+
+    @classmethod
+    def load(cls, path: str) -> "TrainedModel":
+        package = joblib_load(path)
+        return cls(
+            model=package["model"],
+            vectorizer=package["vectorizer"],
+            config=package["config"],
+            metadata=package.get("metadata", {}),
+        )
 
 
 @dataclass
@@ -37,10 +68,12 @@ class DetectionResult:
     anomaly_results: List[AnomalyResult] = field(default_factory=list)
     model: Optional[Any] = None
     threshold: float = -0.5
+    threshold_type: str = "auto"
     burst_windows: List[TimeWindowBurst] = field(default_factory=list)
     total_entries: int = 0
     anomaly_count: int = 0
     anomaly_rate: float = 0.0
+    model_info: Dict[str, Any] = field(default_factory=dict)
 
 
 class AnomalyDetector:
@@ -49,6 +82,40 @@ class AnomalyDetector:
         self.ac = config.anomaly
         self.tw = config.time_window
         self.model: Optional[Any] = None
+        self.model_info: Dict[str, Any] = {}
+        self.vectorizer: Optional[Any] = None
+
+    def load_model(self, trained_model: TrainedModel) -> None:
+        self.model = trained_model.model
+        self.vectorizer = trained_model.vectorizer
+        self.model_info = {
+            "model_version": trained_model.metadata.get("model_version", MODEL_VERSION),
+            "created_at": trained_model.metadata.get("created_at", ""),
+            "training_entries": trained_model.metadata.get("total_entries", 0),
+            "feature_count": trained_model.metadata.get("feature_count", 0),
+            "algorithm": trained_model.metadata.get("algorithm", ""),
+        }
+
+    def save_model(self, vectorizer: Any, path: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        if self.model is None:
+            raise RuntimeError("Model not fitted yet.")
+        meta = {
+            "model_version": MODEL_VERSION,
+            "created_at": datetime.now().isoformat(),
+            "algorithm": self.ac.algorithm,
+            "contamination": self.ac.contamination,
+            "n_estimators": self.ac.n_estimators if self.ac.algorithm == "isolation_forest" else None,
+            **(metadata or {}),
+        }
+        if vectorizer is not None:
+            meta["feature_count"] = len(vectorizer.get_feature_names_out())
+        cfg = {
+            "algorithm": self.ac.algorithm,
+            "contamination": self.ac.contamination,
+            "default_threshold": self.ac.default_threshold,
+        }
+        trained = TrainedModel(model=self.model, vectorizer=vectorizer, config=cfg, metadata=meta)
+        trained.save(path)
 
     def _create_model(self):
         if self.ac.algorithm.lower() == "one_class_svm":
@@ -99,21 +166,33 @@ class AnomalyDetector:
         entries: List[LogEntry],
         feature_matrix: csr_matrix,
         threshold: Optional[float] = None,
+        manual_threshold: bool = False,
         fit_on_data: bool = True,
     ) -> DetectionResult:
         result = DetectionResult()
         result.total_entries = len(entries)
-        base_threshold = threshold if threshold is not None else self.ac.default_threshold
-        result.threshold = base_threshold
         if not entries or feature_matrix.shape[0] == 0:
             return result
+
+        if manual_threshold and threshold is not None:
+            result.threshold = threshold
+            result.threshold_type = "manual"
+        else:
+            result.threshold = threshold if threshold is not None else self.ac.default_threshold
+            result.threshold_type = "auto"
+
         scores = self.predict_scores(feature_matrix, fit_on_data=fit_on_data)
         result.model = self.model
-        anomaly_flags = scores < base_threshold
-        if np.sum(anomaly_flags) == 0 and len(scores) > 0:
-            auto_threshold = np.percentile(scores, self.ac.contamination * 100)
-            result.threshold = float(auto_threshold)
-            anomaly_flags = scores <= result.threshold
+
+        if result.threshold_type == "manual":
+            anomaly_flags = scores < result.threshold
+        else:
+            anomaly_flags = scores < result.threshold
+            if np.sum(anomaly_flags) == 0 and len(scores) > 0:
+                auto_threshold = np.percentile(scores, self.ac.contamination * 100)
+                result.threshold = float(auto_threshold)
+                anomaly_flags = scores <= result.threshold
+
         for i, entry in enumerate(entries):
             is_anom = bool(anomaly_flags[i]) if i < len(anomaly_flags) else False
             score = float(scores[i]) if i < len(scores) else 0.0
@@ -130,34 +209,81 @@ class AnomalyDetector:
         parser: LogParser,
         file_patterns: List[str],
         threshold: Optional[float] = None,
+        manual_threshold: bool = False,
         window_minutes: Optional[int] = None,
+        progress_callback: Optional[Any] = None,
+        vectorizer: Optional[Any] = None,
+        fit_model: bool = True,
     ) -> DetectionResult:
         all_results: List[AnomalyResult] = []
         total = 0
+        total_anomalies = 0
+        is_first_chunk = True
         for chunk_entries in parser.parse_files_streaming(file_patterns):
             if not chunk_entries:
                 continue
             total += len(chunk_entries)
-            feat = parser.extract_features(chunk_entries)
+            feat = parser.extract_features(chunk_entries, vectorizer=vectorizer)
             combined = parser.combine_features(feat.tfidf_matrix, feat.numeric_features)
             if combined is None or combined.shape[0] == 0:
                 for e in chunk_entries:
                     all_results.append(AnomalyResult(entry=e, score=0.0, is_anomaly=False))
                 continue
-            chunk_scores = self.predict_scores(combined, fit_on_data=(self.model is None))
-            th = threshold if threshold is not None else self.ac.default_threshold
-            flags = chunk_scores < th
+            if is_first_chunk and fit_model:
+                chunk_scores = self.predict_scores(combined, fit_on_data=(self.model is None))
+                is_first_chunk = False
+            else:
+                chunk_scores = self.predict_scores(combined, fit_on_data=False)
+
+            if manual_threshold and threshold is not None:
+                th = threshold
+                flags = chunk_scores < th
+            else:
+                th = threshold if threshold is not None else self.ac.default_threshold
+                flags = chunk_scores < th
+
+            chunk_anom = int(np.sum(flags))
+            total_anomalies += chunk_anom
+
             for i, e in enumerate(chunk_entries):
                 s = float(chunk_scores[i]) if i < len(chunk_scores) else 0.0
                 is_a = bool(flags[i]) if i < len(flags) else False
                 all_results.append(AnomalyResult(entry=e, score=s, is_anomaly=is_a))
+
+            if progress_callback is not None:
+                try:
+                    progress_callback(total, total_anomalies)
+                except Exception:
+                    pass
+
         detection = DetectionResult()
         detection.anomaly_results = all_results
-        detection.threshold = threshold if threshold is not None else self.ac.default_threshold
         detection.total_entries = total
-        detection.anomaly_count = sum(1 for a in all_results if a.is_anomaly)
-        detection.anomaly_rate = detection.anomaly_count / total if total > 0 else 0.0
+        detection.anomaly_count = total_anomalies
+        detection.anomaly_rate = total_anomalies / total if total > 0 else 0.0
         detection.model = self.model
+
+        if manual_threshold and threshold is not None:
+            detection.threshold = threshold
+            detection.threshold_type = "manual"
+        else:
+            if total_anomalies == 0 and len(all_results) > 0:
+                all_scores = np.array([a.score for a in all_results])
+                if len(all_scores) > 0:
+                    auto_th = float(np.percentile(all_scores, self.ac.contamination * 100))
+                    detection.threshold = auto_th
+                    for a in detection.anomaly_results:
+                        a.is_anomaly = a.score <= auto_th
+                    detection.anomaly_count = sum(1 for a in detection.anomaly_results if a.is_anomaly)
+                    detection.anomaly_rate = detection.anomaly_count / total if total > 0 else 0.0
+                    detection.threshold_type = "auto"
+                else:
+                    detection.threshold = threshold if threshold is not None else self.ac.default_threshold
+                    detection.threshold_type = "auto"
+            else:
+                detection.threshold = threshold if threshold is not None else self.ac.default_threshold
+                detection.threshold_type = "manual" if manual_threshold else "auto"
+
         detection.burst_windows = self._detect_time_bursts(all_results, window_minutes=window_minutes)
         return detection
 
